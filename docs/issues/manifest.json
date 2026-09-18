@@ -1,0 +1,933 @@
+{
+  "repository": "thatcherstudio/omarchy-arm64",
+  "created": "2026-09-18",
+  "milestones": [
+    "Milestone 1 — Foundation",
+    "Milestone 2 — Package repo",
+    "Milestone 3 — Installer/scripts refactor",
+    "Milestone 4 — ISO build",
+    "Milestone 5 — Validation & boot"
+  ],
+  "issues": [
+    {
+      "number": 1,
+      "title": "[Epic] Foundation: repository, decisions and executable prerequisite checks",
+      "milestone": 1,
+      "labels": [
+        "epic",
+        "docs"
+      ],
+      "deps": [],
+      "objective": "Establish the source baseline and evidence-backed decisions before port implementation. The PM bootstrap provides research, ADR, dashboard and this work queue; the engineering children finish qualification.",
+      "files": "README.md; CONTRIBUTING.md; docs/research.md; docs/adr/001-base-distro.md; docs/upstream-plan.md; docs/issues/",
+      "steps": [
+        "Retain the upstream plan verbatim with its commit and license.",
+        "Use main + feature branches + PRs, with no branch protection during foundation.",
+        "Update the dashboard and checklist as each child closes."
+      ],
+      "accept": [
+        "Public repo, five milestones, eight requested labels and task template exist.",
+        "Source import, base qualification and probe script all have merged PRs and evidence."
+      ],
+      "source": "[Upstream plan: Hard prerequisites; Approach](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "`gh issue list --repo thatcherstudio/omarchy-arm64 --state open --limit 100 --json number --jq '[.[] | select(.number == 2 or .number == 3 or .number == 4)]'` → `[]`; every child is closed with its required evidence and the README dashboard is updated.",
+      "children": [
+        2,
+        3,
+        4
+      ],
+      "body_file": "docs/issues/01.md"
+    },
+    {
+      "number": 2,
+      "title": "[Task] Qualify ALARM base, kernel and package-reuse decisions",
+      "milestone": 1,
+      "labels": [
+        "docs",
+        "infra"
+      ],
+      "deps": [],
+      "objective": "Finalize the implementation inputs for ADR 001. ALARM is the distribution; its rootfs is a bootstrap option. Preserve the accepted reuse-first direction.",
+      "files": "docs/adr/001-base-distro.md; docs/evidence/base-qualification.md; docs/sources.lock.json",
+      "steps": [
+        "Verify an aarch64 builder image or rootfs, pin digest/checksum and document keyring bootstrap; do not trust the example Docker image names without manifest checks.",
+        "Verify linux-aarch64, matching headers, /boot/Image and initramfs/preset files against an ALARM package. Record supported repo names and transport.",
+        "Resolve the observed HTTPS hostname failures using maintained mirror configuration; never disable TLS verification or ALARM package signatures.",
+        "Choose an explicit runtime/settings source pair; document project-signed GitHub Release snapshots and reject wholesale Asahi desktop replacement."
+      ],
+      "accept": [
+        "ADR records image/rootfs pin, source pin, kernel files, mirror policy and exact package lane.",
+        "Kernel/header metadata comes from a real ARM environment; evidence includes command output.",
+        "The fast path uses existing compatible official-edge/community artifacts; rebuild criteria and generic UEFI scope are explicit."
+      ],
+      "source": "[Upstream plan: prerequisites 1, 2, 4](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [provision/src/stage2.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage2.sh); [pkgbuilds/omarchy/PKGBUILD](https://github.com/omacom/omarchy-pkgs/tree/7a3f00b924a2627fd23d45deee4b73fb5e14694a/pkgbuilds/omarchy/PKGBUILD)",
+      "verify": "In the selected aarch64 builder: `uname -m; pacman -Si linux-aarch64 linux-aarch64-headers; pacman -Ql linux-aarch64` → aarch64, available matching package versions and recorded kernel paths; `git diff --check` → exit 0. Save output in docs/evidence/base-qualification.md.",
+      "body_file": "docs/issues/02.md"
+    },
+    {
+      "number": 3,
+      "title": "[Task] Import the pinned upstream ISO baseline through a PR",
+      "milestone": 1,
+      "labels": [
+        "infra"
+      ],
+      "deps": [],
+      "objective": "Make this planning repository implementation-ready while preserving upstream history/provenance and a single profile. This is an unmodified source import, not the port.",
+      "files": "bin/; builder/; configs/; archiso gitlink; .gitmodules; upstream tests; LICENSE; docs/sources.lock.json; docs/evidence/source-import.md",
+      "steps": [
+        "Import omacom/omarchy-iso at 7cfb7111a06873d61c45d37034577d4ba08d3f4f into the repository root on a feature branch; reconcile README and .github planning files deliberately.",
+        "Preserve archiso gitlink 424e78130db2af6c1ceb55b442d7914b1109ff2b and MIT attribution.",
+        "Pin desktop, recipes and prior art in docs/sources.lock.json; choose a source patch/submodule strategy for later cross-repo changes.",
+        "Inventory existing tests and archive a source-comparison report. Keep inherited nightly/release workflows disabled until project CI is configured; avoid accidental upstream publishing."
+      ],
+      "accept": [
+        "Source files match the pinned import except documented planning/workflow reconciliation.",
+        "No duplicate aarch64 profile; upstream test inventory and license are retained.",
+        "Merged import PR has no implementation changes."
+      ],
+      "source": "[Upstream plan: Approach; Files to modify](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [.gitmodules](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/.gitmodules)",
+      "verify": "`git ls-tree HEAD archiso` → gitlink 424e78130db2af6c1ceb55b442d7914b1109ff2b; `git diff --check` → exit 0; compare imported bin/builder/configs to the pinned upstream tree and attach a zero-difference report.",
+      "body_file": "docs/issues/03.md"
+    },
+    {
+      "number": 4,
+      "title": "[Task] Implement a four-prerequisite probe with honest unknown results",
+      "milestone": 1,
+      "labels": [
+        "infra",
+        "testing"
+      ],
+      "deps": [
+        2,
+        3
+      ],
+      "objective": "Provide reproducible prerequisite status without mistaking a reachable URL for an installable desktop or static checks for a boot test.",
+      "files": "scripts/probe-prereqs.sh; tests/prereqs/; docs/evidence/prereqs.json; docs/evidence/prereqs.md",
+      "steps": [
+        "Implement --arch aarch64 --json and --self-test. Report PASS/BLOCKED/UNKNOWN for each of the four upstream prerequisites, with time, URL, source ref and evidence.",
+        "Probe real .db files and required package membership, not directory listings. Separate upstream stable, edge, community and selected project snapshot; hash downloaded DBs.",
+        "Audit guards across entrypoint/profile/live/desktop. Require a matching install/reboot receipt from #16 before prerequisite 4 can become PASS.",
+        "Use timeouts and pipeline failure handling. Fixture cases cover 404, TLS failure, HTML 200, incomplete DB, missing signature and stale/missing boot receipt; no disk or package mutations."
+      ],
+      "accept": [
+        "Current stable DB 200 without desktop is reported incomplete.",
+        "Missing Limine receipt returns UNKNOWN or BLOCKED, not PASS.",
+        "--self-test passes; live probe exits nonzero until all four prerequisites have valid evidence."
+      ],
+      "source": "[Upstream plan: Hard prerequisites](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [research snapshot](https://github.com/thatcherstudio/omarchy-arm64/blob/main/docs/research.md)",
+      "verify": "`bash scripts/probe-prereqs.sh --self-test` → exit 0; `bash scripts/probe-prereqs.sh --arch aarch64 --json` → four explicit results, nonzero while any required gate is blocked/unknown.",
+      "body_file": "docs/issues/04.md"
+    },
+    {
+      "number": 5,
+      "title": "[Epic] Qualify and publish a signed aarch64 package repository",
+      "milestone": 2,
+      "labels": [
+        "epic",
+        "packages"
+      ],
+      "deps": [
+        2,
+        4
+      ],
+      "objective": "Deliver a complete compatible package closure with project trust. Delta: official ARM repos now exist; stable lacks the desktop and edge includes it. Reuse first rather than rebuilding all prior-art tools.",
+      "files": "docs/package-gap-analysis.md; packages/; docs/package-repository.md; docs/evidence/packages/",
+      "steps": [
+        "Complete child issues in order: inventory, gaps, signed publication.",
+        "Track ABI consistency of the Hyprland stack and the runtime/settings contract.",
+        "Do not close on HTTP 200 alone or a successful unsigned sync."
+      ],
+      "accept": [
+        "Every required default package resolves for the chosen source pair.",
+        "Generic UEFI boot package contract is represented; signed snapshot works in a clean aarch64 environment."
+      ],
+      "source": "[Upstream plan: prerequisite 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [README.md](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/README.md)",
+      "verify": "`gh issue list --repo thatcherstudio/omarchy-arm64 --state open --limit 100 --json number --jq '[.[] | select(.number == 6 or .number == 7 or .number == 8)]'` → `[]`; every child is closed with its required evidence and the README dashboard is updated.",
+      "children": [
+        6,
+        7,
+        8
+      ],
+      "body_file": "docs/issues/05.md"
+    },
+    {
+      "number": 6,
+      "title": "[Task] Audit full package closure across ALARM, official edge and community feeds",
+      "milestone": 2,
+      "labels": [
+        "packages",
+        "docs"
+      ],
+      "deps": [
+        2,
+        4
+      ],
+      "objective": "Determine the actual gaps, including transitive dependencies and ABI compatibility. The old approximate 25/17 package counts are not inputs.",
+      "files": "docs/package-gap-analysis.md; packages/required-aarch64.txt; packages/sources.lock.json; packages/decisions.json; scripts/audit-package-closure.sh; docs/evidence/packages/",
+      "steps": [
+        "Clone the pinned community repo for audit. Compare both Omarchy base/other lists, live releng list, archinstall.packages, selected runtime/settings/nvim and boot dependencies.",
+        "Record required, optional, substitute, excluded and missing per package, with version, source URL/ref, hash, signature, license, arch/provides and reason. Include kernel/headers, archiso/archinstall, fonts, keyring and quickshell.",
+        "Audit whole Hyprland/aquamarine/toolkit/guiutils/portal SONAME closure; reuse stage2 resolver logic. Do not mix feeds solely by newest version.",
+        "Inspect runtime/settings payloads for setup-form.sh and ARM boot omissions; community pair is Asahi-specific. Audit native payloads inside any packages, especially nvim.",
+        "Identify optional x86-only applications and explicit bounded skips (including opencode only if still unresolved). Confirm mise-bin provides/conflicts mapping and current nvim PKGBUILD path."
+      ],
+      "accept": [
+        "No required target is silently omitted; machine-readable manifest reconciles all source lists.",
+        "Clean ALARM resolver output and ELF/dependency audit back every reuse decision.",
+        "Each gap has a build recipe or explicit optional exclusion; current publication deltas are documented."
+      ],
+      "source": "[Upstream plan: prerequisites 1–2; changes 3–4, 8](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [provision/src/stage2.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage2.sh); [provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh); [packages.json](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/packages.json)",
+      "verify": "`bash scripts/audit-package-closure.sh --arch aarch64 --manifest packages/sources.lock.json` → complete report and exit 0 only for a fully resolved required closure; before #7, explicit missing entries and nonzero are expected. `pacman -Sp --noconfirm --print-format '%r/%n' $(cat packages/required-aarch64.txt)` in an isolated synced ARM environment must agree with the report.",
+      "body_file": "docs/issues/06.md"
+    },
+    {
+      "number": 7,
+      "title": "[Task] Package only confirmed ARM gaps and generic UEFI dependencies",
+      "milestone": 2,
+      "labels": [
+        "packages"
+      ],
+      "deps": [
+        6
+      ],
+      "objective": "Build the smallest missing set and make reusable boot dependencies available. An audited zero-gap result is acceptable; an invented fixed list is not.",
+      "files": "packages/pkgbuilds/; packages/patches/; packages/sources.lock.json; scripts/build-package-gaps.sh; docs/evidence/packages/builds.md",
+      "steps": [
+        "Port proven recipes from the pinned community repo and arm-utm stage3; use root pkgbuilds/omarchy-nvim, mise-bin and herdr's exact Zig 0.15.2 recipe.",
+        "Build required gaps natively in clean ALARM environments, preserve provenance and package ownership; separate optional apps and cap build time.",
+        "Provide generic-UEFI dependencies/configuration through a small project integration package if upstream ARM settings exclude them. Coordinate its contract with #15 without depending on #15 closing; #15 consumes this published contract.",
+        "Keep runtime/settings versions and source commits identical; test current ISO setup-form payload compatibility. Do not copy unowned scripts over package files.",
+        "If Hyprland ABI repair is required, build dependencies first as stage2 demonstrates, then re-run the resolver."
+      ],
+      "accept": [
+        "Every required gap is built or demonstrated already satisfied.",
+        "Artifacts contain aarch64/appropriate any payloads, build logs and checksums; no x86 ELF contamination.",
+        "Recipe licenses and runtime/settings pair contract are verified."
+      ],
+      "source": "[provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh); [packages.json](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/packages.json); [pkgbuilds/omarchy-settings/PKGBUILD](https://github.com/omacom/omarchy-pkgs/tree/7a3f00b924a2627fd23d45deee4b73fb5e14694a/pkgbuilds/omarchy-settings/PKGBUILD); [Upstream plan: prerequisite 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "`bash scripts/build-package-gaps.sh --arch aarch64 --manifest packages/sources.lock.json` → exit 0 with artifact manifest (or verified empty gap set); rerun #6 audit → no unresolved required packages; `pacman -Dk` in the qualification environment → no dependency errors.",
+      "body_file": "docs/issues/07.md"
+    },
+    {
+      "number": 8,
+      "title": "[Task] Publish and verify a project-signed immutable ARM package snapshot",
+      "milestone": 2,
+      "labels": [
+        "packages",
+        "infra"
+      ],
+      "deps": [
+        7
+      ],
+      "objective": "Make the selected complete package set pacman-consumable with a project GPG key, reproducible provenance and rollback. This remains necessary even when upstream/community bytes are reused.",
+      "files": "packages/keyring/ (public material only); .github/workflows/publish-packages.yml; scripts/verify-package-repo.sh; docs/package-repository.md; docs/evidence/packages/publication.json",
+      "steps": [
+        "Use GitHub Release assets in this repo at an immutable versioned tag; publish a literal repository URL and DB name. Check redistribution rights and reuse audited bytes where allowed.",
+        "Establish project key custody and CI signing subkey, public fingerprint/bootstrap instructions and rotation/rollback policy. Never commit private keys.",
+        "Sign packages and database, upload a complete snapshot, verify it publicly before selecting it for clients. Require PackageRequired DatabaseRequired TrustedOnly for the project feed.",
+        "In a clean aarch64 chroot populate ALARM + project keyrings, sync, resolve and install the required closure. Retain hashes and test rejection of tampered artifacts/untrusted signatures.",
+        "Keep mutable alias promotion separate from immutable publication; a DB/signature mismatch must fail closed. Record verified package sources."
+      ],
+      "accept": [
+        "Exact DB/package/signature URLs return 200; all advertised assets match hashes and trusted signatures.",
+        "pacman sync and full closure installation succeed in a fresh ARM environment.",
+        "Unsigned/tampered fixture is rejected; prior signed snapshot remains retrievable."
+      ],
+      "source": "[Upstream plan: prerequisite 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [SIGNING.md](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/SIGNING.md); [scripts/smoke-test.sh](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/scripts/smoke-test.sh)",
+      "verify": "`bash scripts/verify-package-repo.sh --manifest docs/evidence/packages/publication.json --negative-tests` → exit 0; in a disposable aarch64 chroot `pacman -Sy && pacman -Syu --needed $(cat /verification/required-aarch64.txt) && pacman -Dk` → exit 0 with strict project signature policy. The isolated sync is followed immediately by full upgrade/install.",
+      "body_file": "docs/issues/08.md"
+    },
+    {
+      "number": 9,
+      "title": "[Epic] Refactor the shared installer and builder for dual architecture",
+      "milestone": 3,
+      "labels": [
+        "epic",
+        "iso-build"
+      ],
+      "deps": [
+        2,
+        3
+      ],
+      "objective": "Deliver one source tree with build-time overlays and a working generic ARM target path. Membership is not a dependency on this epic closing; work can proceed alongside package publication.",
+      "files": "bin/; builder/; configs/; .github/workflows/; packages/patches/; tests/",
+      "steps": [
+        "Sequence shared-file changes through rebases; preserve x86 behavior.",
+        "Track all eleven upstream change areas plus current orchestrator and target-package deltas.",
+        "Require the early archinstall/Limine proof before first release candidate."
+      ],
+      "accept": [
+        "All children merged and verified.",
+        "No duplicate profile directory; all source/package changes reproducible from pinned inputs."
+      ],
+      "source": "[Upstream plan: Concrete changes 1–11](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [configs/airootfs/usr/share/omarchy-iso/orchestrator/phases_impl.py](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/airootfs/usr/share/omarchy-iso/orchestrator/phases_impl.py)",
+      "verify": "`gh issue list --repo thatcherstudio/omarchy-arm64 --state open --limit 100 --json number --jq '[.[] | select(.number == 10 or .number == 11 or .number == 12 or .number == 13 or .number == 14 or .number == 15 or .number == 16 or .number == 17 or .number == 18 or .number == 19 or .number == 20)]'` → `[]`; every child is closed with its required evidence and the README dashboard is updated.",
+      "children": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "body_file": "docs/issues/09.md"
+    },
+    {
+      "number": 10,
+      "title": "[Task] Add --arch selection, container plumbing and isolated build state",
+      "milestone": 3,
+      "labels": [
+        "iso-build"
+      ],
+      "deps": [
+        3
+      ],
+      "objective": "Implement --arch x86_64|aarch64, default x86_64, with clear CLI/environment precedence and architecture-safe caches/artifact selection.",
+      "files": "bin/omarchy-iso-make; docs/building.md; tests/arch-selection.sh",
+      "steps": [
+        "Pass OMARCHY_ARCH and Docker --platform using the qualified #2 image contract; validate inputs before privileged actions.",
+        "Keep channel/ref/local-source options compatible; document CLI overriding OMARCHY_ARCH and env/default behavior.",
+        "Isolate mutable offline DB/cache/work/output state by architecture and channel. Package cache filenames alone do not isolate DBs or latest-ISO selection.",
+        "Add mock-container argument tests; do not require a full ISO to test parsing."
+      ],
+      "accept": [
+        "Both supported architectures select matching container/platform/env; unsupported/missing flag value fails.",
+        "Default invocation preserves x86 intent; simultaneous output selection cannot rename the other architecture's ISO.",
+        "No unqualified assertion that pacman automatically uses per-arch cache directories."
+      ],
+      "source": "[Upstream plan: change 1](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [bin/omarchy-iso-make](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/bin/omarchy-iso-make)",
+      "verify": "`bash tests/arch-selection.sh` → exit 0 for default, environment, CLI precedence, invalid input and two-arch artifact/cache cases; `bin/omarchy-iso-make --arch invalid` → nonzero before Docker or sudo.",
+      "body_file": "docs/issues/10.md"
+    },
+    {
+      "number": 11,
+      "title": "[Task] Overlay profile, builder packages and kernel paths at build time",
+      "milestone": 3,
+      "labels": [
+        "iso-build"
+      ],
+      "deps": [
+        2,
+        6,
+        10
+      ],
+      "objective": "Parameterize the builder and live rootfs for ALARM using one profile. Delta: zstd already removed the BCJ requirement; retain it.",
+      "files": "builder/build-iso.sh; builder/build-omarchy-packages.sh; configs/profiledef.sh; configs/airootfs/etc/mkinitcpio.d/; tests/build-overlay.sh",
+      "steps": [
+        "Seed releng once, generate packages.aarch64 and filter x86-only releng entries using the audited manifest.",
+        "Select linux-arm64 Node tarball and verify checksum; x86 keeps linux-x64.",
+        "Use qualified linux-aarch64/preset/Image paths on ARM and omit linux-t2.preset. Preserve existing x86 T2 behavior.",
+        "Set arch and UEFI-only boot modes; retain zstd settings. Update all offline-mirror enumeration and expected-count inputs, including current builder extensions.",
+        "Bootstrap ALARM keyring/build dependencies before pacman; verify archiso package availability and keep gitlink pin. Add minimal recorded patches only if ARM tooling requires them."
+      ],
+      "accept": [
+        "Generated ARM tree has correct arch, Node payload, kernel/preset and package-list filename.",
+        "No accidental sed removes the selected ARM kernel; all package enumerations consume the same overlay.",
+        "Source configs remain unchanged by generation; x86 overlay regression fixtures pass."
+      ],
+      "source": "[Upstream plan: changes 2, 3, 6](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [configs/profiledef.sh](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/profiledef.sh); [provision/src/stage2.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage2.sh)",
+      "verify": "`bash tests/build-overlay.sh --arch x86_64 && bash tests/build-overlay.sh --arch aarch64` → exit 0; `git diff --exit-code -- configs` after overlay generation → no generated-source modifications.",
+      "body_file": "docs/issues/11.md"
+    },
+    {
+      "number": 12,
+      "title": "[Task] Route all pacman channels through ARM-aware package and trust overlays",
+      "milestone": 3,
+      "labels": [
+        "packages",
+        "iso-build"
+      ],
+      "deps": [
+        6,
+        11
+      ],
+      "objective": "Make build/live/offline package lists and repository configuration consistent with the qualified ALARM and project snapshot.",
+      "files": "builder/archinstall.packages; builder/build-iso.sh; configs/pacman-online-{stable,rc,edge}.conf; configs/pacman-offline.conf; tests/pacman-overlay.sh",
+      "steps": [
+        "Use a shared list/filter, remove ARM microcode, syslinux, x86 firmware tools, arch-mact2 and unsupported multilib. Handle optional GPU/x86 packages from the audit rather than an ad hoc skip-all rule.",
+        "Generate ALARM $arch/$repo base paths and selected project feed across channels; do not route ARM base packages to stable-mirror.omarchy.org.",
+        "Bundle public keyrings and preserve signature checks for live and offline mirror, with a documented policy for generated offline DB signatures.",
+        "Do not silently map incomplete stable to mutable edge: use the locked snapshot or an actionable failure. Check local-source package output signing compatibility."
+      ],
+      "accept": [
+        "ARM config contains no x86-only repo sections or unresolved required packages.",
+        "x86 config remains equivalent; all supported ARM channel selections are explicit.",
+        "Tampered offline package fixture is refused; keys persist into the target bootstrap."
+      ],
+      "source": "[Upstream plan: changes 4, 8](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [configs/pacman-online-edge.conf](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/pacman-online-edge.conf); [builder/build-iso.sh](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/builder/build-iso.sh)",
+      "verify": "`bash tests/pacman-overlay.sh --all-channels --both-arches --negative-signature-case` → exit 0; in the generated ARM live root `pacman -Sy && pacman -Si linux-aarch64` → available ARM kernel from the qualified base configuration.",
+      "body_file": "docs/issues/12.md"
+    },
+    {
+      "number": 13,
+      "title": "[Task] Generate ARM UEFI live-ISO boot entries and EFI binaries",
+      "milestone": 3,
+      "labels": [
+        "bootloader",
+        "iso-build"
+      ],
+      "deps": [
+        11
+      ],
+      "objective": "Boot the ARM live ISO through ARM UEFI without copying the x86 BIOS or EFI chain.",
+      "files": "configs/grub/grub.cfg; configs/grub/loopback.cfg; configs/efiboot/loader/loader.conf; configs/efiboot/loader/entries/; configs/syslinux/ overlay selection; tests/live-boot-overlay.sh",
+      "steps": [
+        "Port the upstream shared-template approach: generate ARM loader/default entries and correct kernel/initrd paths at build time.",
+        "Omit syslinux, shellx64/shellia32 and memtest fragments on ARM; retain x86 chain.",
+        "Verify pinned mkarchiso/grub supports aarch64-efi output and produces BOOTAA64.EFI with the correct PE architecture; handle ISO EFI image layout and firmware fallback.",
+        "Keep live GRUB boot separate from target Limine integration (#15)."
+      ],
+      "accept": [
+        "Generated ARM tree contains a valid ARM UEFI fallback binary and referenced kernel/initrd files.",
+        "No BIOS/x86 shell or microcode path remains in active ARM boot configs.",
+        "x86 boot fixture remains equivalent."
+      ],
+      "source": "[Upstream plan: change 5](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [provision/src/stage2.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage2.sh)",
+      "verify": "`bash tests/live-boot-overlay.sh --both-arches` → exit 0; `file <generated-arm-esp>/EFI/BOOT/BOOTAA64.EFI` → PE/COFF EFI aarch64 executable; all boot-entry paths resolve inside the generated image.",
+      "body_file": "docs/issues/13.md"
+    },
+    {
+      "number": 14,
+      "title": "[Task] Preserve ALARM mirrors and kernel choice through configurator and finalization",
+      "milestone": 3,
+      "labels": [
+        "iso-build",
+        "packages"
+      ],
+      "deps": [
+        8,
+        12
+      ],
+      "objective": "Ensure installation and subsequent updates use the qualified ARM repositories; fixing the Configurator alone is insufficient.",
+      "files": "configs/airootfs/root/configurator; orchestrator context/config inputs; packages/patches/desktop-pacman/; upstream install/post-install/pacman.sh and default/pacman/; tests/target-config.sh",
+      "steps": [
+        "Select architecture at runtime and generate correct mirror URLs/kernel choice for every Configurator JSON path, including pre-mounted/protected mode.",
+        "Guard T2 detection and unsupported firmware paths explicitly; do not imply Asahi based on uname alone.",
+        "Port a package-owned desktop change to preserve ALARM + project repository/keyring configuration after post-install restores and updates. Pin it in the build inputs.",
+        "Pass exact runtime/settings names and validated setup-form contract; do not fall through to incomplete stable."
+      ],
+      "accept": [
+        "All ARM JSON variants parse and select linux-aarch64/qualified boot intent and repos.",
+        "Post-install and a simulated config restoration keep ARM servers and trust policy.",
+        "x86 JSON and T2 detection regression fixtures pass."
+      ],
+      "source": "[Upstream plan: change 7](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [install/post-install/pacman.sh](https://github.com/omacom/omarchy/tree/d174d4aa279ea7393d4fad4a80fed147866106b9/install/post-install/pacman.sh); [configs/airootfs/root/configurator](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/airootfs/root/configurator)",
+      "verify": "`bash tests/target-config.sh --both-arches --all-layouts --post-install` → exit 0; after target finalization `pacman-conf -r core Server` → ALARM path, and `pacman-conf -r omarchy-arm64 Server` → the locked project snapshot (use the exact repo name recorded in #8).",
+      "body_file": "docs/issues/14.md"
+    },
+    {
+      "number": 15,
+      "title": "[Task] Port the target Limine orchestrator and generic ARM boot package contract",
+      "milestone": 3,
+      "labels": [
+        "bootloader"
+      ],
+      "deps": [
+        7,
+        13,
+        14
+      ],
+      "objective": "Make the installed target boot on generic UEFI ARM. Delta: the current Python orchestrator directly copies BOOTX64.EFI, and ARM settings packages omit Limine configuration for Asahi.",
+      "files": "configs/airootfs/usr/share/omarchy-iso/orchestrator/phases_impl.py; archinstall_adapter.py; Configurator boot intent; packages/patches/ and generic-UEFI integration package from #7; tests/target-boot/",
+      "steps": [
+        "Port BOOTAA64.EFI selection and ARM update-hook concepts from Armarchy install/login/limine-arm64.sh at the pinned ref, adapting to current orchestrator APIs rather than copying its 3.x script.",
+        "Handle normal/removable/pre-mounted EFI names, fallback boot with fresh NVRAM, architecture validation and ARM BIOS rejection.",
+        "Supply package-owned Limine hooks/settings/Snapper configuration missing from upstream ARM recipes; use linux-aarch64 Image/preset/headers paths and validate UKI generation on ARM.",
+        "Preserve root UUID, LUKS unlock, Btrfs subvolumes and snapshot boot behavior. Scope unsupported x86-oriented hibernation/hardware behavior explicitly.",
+        "Ensure package upgrades restore the same boot contract and hooks are not left masked."
+      ],
+      "accept": [
+        "Tests cover both arch EFI binaries, correct loader/register paths, no ARM BIOS invocation and matching headers/kernel paths.",
+        "Generic-UEFI boot dependencies and settings persist through package reinstall.",
+        "Disposable target builds an ARM UKI with correct root/LUKS command line; runtime boot proof remains #16."
+      ],
+      "source": "[Upstream plan: prerequisite 4; Open risks 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [configs/airootfs/usr/share/omarchy-iso/orchestrator/phases_impl.py](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/airootfs/usr/share/omarchy-iso/orchestrator/phases_impl.py); [install/login/limine-arm64.sh](https://github.com/jondkinney/omarchy/tree/e40abf0c270c8a7955c10def536769c2c1cfa96e/install/login/limine-arm64.sh); [pkgbuilds/omarchy-settings/PKGBUILD](https://github.com/omacom/omarchy-pkgs/tree/7a3f00b924a2627fd23d45deee4b73fb5e14694a/pkgbuilds/omarchy-settings/PKGBUILD)",
+      "verify": "`python -m unittest discover -s tests/target-boot` → exit 0; in a disposable installed ARM target `mkinitcpio -P && limine-update` → exit 0 and an ARM UKI/BOOTAA64.EFI with resolved root/LUKS paths. Attach file/boot-config output.",
+      "body_file": "docs/issues/15.md"
+    },
+    {
+      "number": 16,
+      "title": "[Task] Prove archinstall + Limine + LUKS/Btrfs/Snapper on ARM before ISO release",
+      "milestone": 3,
+      "labels": [
+        "bootloader",
+        "testing"
+      ],
+      "deps": [
+        15
+      ],
+      "objective": "Close upstream prerequisite 4 early using a disposable ALARM VM/rootfs and the pinned installer stack. A systemd-boot desktop cannot close this gate.",
+      "files": "docs/runbooks/limine-prereq.md; tests/prereqs/limine-receipt.schema.json; docs/evidence/limine-prereq.json; serial/boot logs referenced by checksum",
+      "steps": [
+        "Use the qualified bootstrap to run the exact archinstall adapter/orchestrator on an explicitly identified scratch virtual disk; do not require the final custom ISO to perform this spike.",
+        "Install encrypted Btrfs, boot via Limine with fresh EFI variables, unlock, log in and create a Snapper snapshot.",
+        "Exercise a kernel upgrade/reboot and snapshot recovery; record package/kernel/archinstall/firmware/source versions and all failures.",
+        "If the combination fails, keep the gate open with a concrete follow-up; systemd-boot alternative needs a new ADR. Feed a hash-bound successful receipt into #4."
+      ],
+      "accept": [
+        "Cold boot and reboot use BOOTAA64.EFI with correct LUKS/root mapping.",
+        "Kernel update remains bootable and snapshot recovery is demonstrated.",
+        "Probe script recognizes only a matching real receipt; attach actual log lines, not invented expected boot messages."
+      ],
+      "source": "[Upstream plan: prerequisite 4; Open risks 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [install/login/limine-arm64.sh](https://github.com/jondkinney/omarchy/tree/e40abf0c270c8a7955c10def536769c2c1cfa96e/install/login/limine-arm64.sh); [provision/src/stage1.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage1.sh)",
+      "verify": "In the scratch guest: `uname -m; findmnt -no FSTYPE /; sudo snapper -c root list; sudo efibootmgr -v` → aarch64, btrfs, a recoverable snapshot and ARM Limine path; `bash scripts/probe-prereqs.sh --arch aarch64 --json` → prerequisite 4 PASS only with the recorded matching receipt.",
+      "body_file": "docs/issues/16.md"
+    },
+    {
+      "number": 17,
+      "title": "[Task] Port remaining ARM desktop/package integration fixes",
+      "milestone": 3,
+      "labels": [
+        "packages",
+        "iso-build"
+      ],
+      "deps": [
+        6,
+        14
+      ],
+      "objective": "Adapt proven application fixes to current package-owned Omarchy 4. Do not reinstall the old Omarchy 3 UI stack or overwrite package files by hand.",
+      "files": "packages/patches/desktop/; packages/decisions.json; tests/desktop-arm.sh; docs/evidence/desktop-contract.md",
+      "steps": [
+        "Port mise-bin substitution and current nvim PKGBUILD location from arm-utm stage3/Guy James guide only where #6 shows they remain necessary.",
+        "Re-evaluate opencode/bun with bounded builds; explicitly omit optional unresolved tools and their UI entries, never required desktop dependencies.",
+        "Port the kernel-current detection idea from stage3, including package-owned modules.builtin/modules.order rather than /usr/lib/modules/*/vmlinuz. Preserve real reboot-required and service-restart behavior.",
+        "Verify /usr/bin helpers, OMARCHY_PATH, systemd user units and first-run/migration markers are supplied by the runtime/settings pair; add only missing packaging fixes.",
+        "Use current package updates; do not transplant stage3's git-pull post-update hook into a package-managed runtime or mark unexecuted migrations done."
+      ],
+      "accept": [
+        "No x86 binaries in audited app payloads; mise and nvim start on ARM.",
+        "No perpetual update/first-login notification caused by missing units or helper paths.",
+        "Kernel detection fixtures distinguish current, upgraded-not-rebooted, rebooted, missing metadata and unrelated reboot flags."
+      ],
+      "source": "[provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh); [bin/omarchy-update-restart](https://github.com/omacom/omarchy/tree/d174d4aa279ea7393d4fad4a80fed147866106b9/bin/omarchy-update-restart); [Guy James guide](https://gist.github.com/guyjames/c8d0fd23ba029f4f7a624e7a7170c40d/3bf0692d35545c960341f8792c1ff3388f108a0e)",
+      "verify": "`bash tests/desktop-arm.sh --kernel-cases --package-layout` → exit 0; in the ARM guest `mise --version; nvim --headless '+q'; systemctl --user --failed` → working tools and no failed required Omarchy units. #27 performs the real upgrade/reboot proof.",
+      "body_file": "docs/issues/17.md"
+    },
+    {
+      "number": 18,
+      "title": "[Task] Package optional UTM Wayland integration and graphics controls",
+      "milestone": 3,
+      "labels": [
+        "packages",
+        "testing"
+      ],
+      "deps": [
+        17
+      ],
+      "objective": "Reuse working UTM integration while keeping generic ARM hardware defaults intact.",
+      "files": "packages/pkgbuilds/omarchy-utm-integration/; VM-scoped user/service configuration; tests/utm-integration.sh; docs/utm.md",
+      "steps": [
+        "Port from pinned arm-utm provision/src/omarchy-arm-vdagent, stage2/3, omarchy-arm-gpu, omarchy-arm-display and omarchy-arm-share; preserve attribution.",
+        "Use spice-vdagentd with the verified options and exactly one Wayland session agent; activate only with the required SPICE device/session.",
+        "Provide explicit software-rendering fallback and tested resolution controls. UTM 5 acceleration and runtime resizing are claims to validate, not blanket no-GPU/fixed-resolution limitations.",
+        "Keep guest agent, clipboard and shared-folder behavior opt-in/VM-scoped; preserve firewall/user privilege defaults."
+      ],
+      "accept": [
+        "Package owns installed helpers/units; no duplicate clipboard agents.",
+        "No-SPICE generic VM skips cleanly without service restart loops.",
+        "Integration config does not force software rendering on physical ARM hardware."
+      ],
+      "source": "[provision/src/stage2.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage2.sh); [provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh); [provision/src/omarchy-arm-vdagent](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/omarchy-arm-vdagent)",
+      "verify": "`bash tests/utm-integration.sh --with-spice --without-spice --generic-hardware` → exit 0; `systemd-analyze --user verify <packaged-user-units>` in the target environment → no unit errors. Actual clipboard/resolution round trips are #28.",
+      "body_file": "docs/issues/18.md"
+    },
+    {
+      "number": 19,
+      "title": "[Task] Parameterize QEMU smoke tools and architecture-specific release selection",
+      "milestone": 3,
+      "labels": [
+        "iso-build",
+        "testing"
+      ],
+      "deps": [
+        10,
+        13
+      ],
+      "objective": "Select the correct QEMU/firmware/ISO artifacts without cross-architecture ambiguity.",
+      "files": "bin/omarchy-iso-boot; bin/omarchy-vm; bin/omarchy-iso-release; related test/upload selection; tests/vm-release.sh; docs/building.md",
+      "steps": [
+        "Select arch explicitly or from unambiguous filename and reject mismatches.",
+        "Use qemu-system-aarch64 -machine virt with appropriate CPU/acceleration, ARM firmware code plus a per-run writable VARS copy; discover distribution/macOS firmware names instead of assuming the same paths.",
+        "Keep x86 OVMF behavior; retain serial logs/timeouts and make firmware-missing errors actionable.",
+        "Parameterize release globs and artifact naming; constrain latest selection by arch/ref. Mock uploads in tests."
+      ],
+      "accept": [
+        "Generated commands use matching QEMU, firmware, machine and ISO.",
+        "Release cannot select or rename the other arch's output.",
+        "Code firmware stays immutable and runs do not share writable NVRAM."
+      ],
+      "source": "[Upstream plan: changes 9–10](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [README.md](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/README.md)",
+      "verify": "`bash tests/vm-release.sh --both-arches --mock-upload` → exit 0; fixtures cover missing firmware, mismatched ISO and concurrent arch outputs. No release mutation during tests.",
+      "body_file": "docs/issues/19.md"
+    },
+    {
+      "number": 20,
+      "title": "[Task] Configure native dual-arch CI and evidence artifacts",
+      "milestone": 3,
+      "labels": [
+        "infra",
+        "iso-build"
+      ],
+      "deps": [
+        8,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "objective": "Make build and verification repeatable on GitHub-hosted native runners, with isolated architectures and controlled publication.",
+      "files": ".github/workflows/nightly-build.yml; workflow_dispatch build workflow; docs/ci.md",
+      "steps": [
+        "Use x86 ubuntu-latest (record resolved image) and ubuntu-24.04-arm with arch matrix; pass --arch and locked source/package inputs.",
+        "Keep caches, offline DBs, work dirs and artifacts separated by arch/channel; record free disk/RAM preflight and tool/image versions.",
+        "Run existing upstream checks and new focused tests before builds; upload ISO, checksum, package manifest and diagnostic logs per arch, including on failure.",
+        "Use explicit read-only default permissions; signing/publication remains in #8 workflow. Enable scheduling only after manual matrix qualification.",
+        "Document fork PR limits, runner disk budget, timeouts and QEMU smoke acceleration fallback."
+      ],
+      "accept": [
+        "Workflow validates and a manual run records real native aarch64 on the ARM leg.",
+        "Both build/test legs pass before enabling nightly; failed runs retain diagnostics.",
+        "Per-arch artifacts cannot overwrite each other and no upstream release credentials are used."
+      ],
+      "source": "[Upstream plan: change 11](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [GitHub ARM GA](https://github.blog/changelog/2025-08-07-arm64-hosted-runners-for-public-repositories-are-now-generally-available/)",
+      "verify": "`actionlint .github/workflows/nightly-build.yml` → exit 0; `gh workflow run nightly-build.yml --repo thatcherstudio/omarchy-arm64` then `gh run view <run-id> --repo thatcherstudio/omarchy-arm64` → both native matrix legs successful, separate artifacts/logs. Store the actual run URL.",
+      "body_file": "docs/issues/20.md"
+    },
+    {
+      "number": 21,
+      "title": "[Epic] Produce and qualify the first dual-architecture ISO artifacts",
+      "milestone": 4,
+      "labels": [
+        "epic",
+        "iso-build"
+      ],
+      "deps": [
+        16,
+        20
+      ],
+      "objective": "Produce a regression-checked x86 ISO and the first ARM ISO with live Configurator evidence. This tracker closes on its children, not merely a successful build command.",
+      "files": "docs/evidence/builds/; docs/building.md; CI artifact indexes",
+      "steps": [
+        "Run x86 regression before ARM qualification to isolate shared-profile regressions.",
+        "Record exact source, package snapshot, archiso, tool and container pins.",
+        "Retain checksums and live boot evidence."
+      ],
+      "accept": [
+        "Both artifacts have reproducible provenance.",
+        "ARM reaches the live Configurator under QEMU; installed desktop acceptance remains Milestone 5."
+      ],
+      "source": "[Upstream plan: Verification](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "`gh issue list --repo thatcherstudio/omarchy-arm64 --state open --limit 100 --json number --jq '[.[] | select(.number == 22 or .number == 23 or .number == 24)]'` → `[]`; every child is closed with its required evidence and the README dashboard is updated.",
+      "children": [
+        22,
+        23,
+        24
+      ],
+      "body_file": "docs/issues/21.md"
+    },
+    {
+      "number": 22,
+      "title": "[Task] Build x86_64 and verify semantic parity against the pinned upstream baseline",
+      "milestone": 4,
+      "labels": [
+        "iso-build",
+        "testing"
+      ],
+      "deps": [
+        20
+      ],
+      "objective": "Protect the known-working x86 path. Interpret byte-similar as comparable payload/boot behavior under pinned inputs, not a false bit-identical claim for changing packages/timestamps.",
+      "files": "scripts/compare-iso-baseline.sh; docs/evidence/builds/x86-regression.md; normalized package/config/boot manifests",
+      "steps": [
+        "Build unmodified upstream and refactored x86 with identical available package snapshot, source date, tooling and archiso revision in isolated directories.",
+        "Compare normalized package sets, file payload/modes, boot configs and expected initramfs content; explain timestamp/signature/ordering differences.",
+        "Boot the refactored x86 ISO through existing BIOS/UEFI smoke paths that upstream supports. Test target install where existing harness allows.",
+        "Pick x86 first because shared-overlay defects are easier to identify against an established baseline."
+      ],
+      "accept": [
+        "No unexplained functional/package/config differences; report lists permissible nondeterminism.",
+        "Existing x86 boot/install checks remain green.",
+        "Artifact checksum and comparison report committed or indexed."
+      ],
+      "source": "[Upstream plan: Verification: x86_64 regression](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [configs/profiledef.sh](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/configs/profiledef.sh)",
+      "verify": "`bin/omarchy-iso-make --arch x86_64 --no-boot-offer --keep-pkg-cache` → exit 0; `bash scripts/compare-iso-baseline.sh <baseline.iso> <candidate.iso>` → exit 0 with no unexplained differences; attach x86 BIOS/UEFI smoke logs.",
+      "body_file": "docs/issues/22.md"
+    },
+    {
+      "number": 23,
+      "title": "[Task] Build the first aarch64 ISO from the qualified signed snapshot",
+      "milestone": 4,
+      "labels": [
+        "iso-build"
+      ],
+      "deps": [
+        8,
+        16,
+        20,
+        22
+      ],
+      "objective": "Produce an ARM ISO with complete provenance using the public native ARM runner. Do not close on a partial build or a renamed x86 artifact.",
+      "files": "docs/evidence/builds/aarch64-build.md; docs/evidence/builds/artifacts.json; build manifests and checksums",
+      "steps": [
+        "Build on native aarch64 with pinned inputs and a clean architecture-specific cache; collect duration, peak storage and failures.",
+        "Validate ARM EFI executable, squashfs architecture, actual kernel/initrd paths and the complete offline package closure.",
+        "Verify project and ALARM trust bootstrap from the live filesystem, matching runtime/settings and current setup form.",
+        "If mkarchiso needs changes, land a minimal tracked patch/PR and update pins; do not hand-patch the generated ISO."
+      ],
+      "accept": [
+        "Build returns 0 and artifact is nonempty with SHA256 and source/package manifests.",
+        "No required x86-only packages/EFI binaries in active ARM path.",
+        "Estimated 30–60 minutes is a planning estimate only; record actual duration."
+      ],
+      "source": "[Upstream plan: Verification: aarch64 build; Open risks 1](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "`bin/omarchy-iso-make --arch aarch64 --no-boot-offer --keep-pkg-cache` on the ARM runner → exit 0; `sha256sum release/*aarch64*.iso` → digest recorded; package/EFI inspection agrees with the locked ARM manifest.",
+      "body_file": "docs/issues/23.md"
+    },
+    {
+      "number": 24,
+      "title": "[Task] QEMU ARM live-ISO smoke: reach and exercise the Configurator",
+      "milestone": 4,
+      "labels": [
+        "testing",
+        "bootloader"
+      ],
+      "deps": [
+        23
+      ],
+      "objective": "Verify firmware → live kernel → Configurator before attempting the full user installation.",
+      "files": "scripts/verify-live-arm.sh; docs/evidence/builds/qemu-live.md; serial log/checksum index",
+      "steps": [
+        "Boot the exact #23 ISO with qemu-system-aarch64 -machine virt, ARM firmware and new writable variables. Use software emulation where native acceleration is unavailable.",
+        "Capture serial output and screenshot; verify Configurator picker inputs, ARM architecture, virtio storage/network and no emergency shell.",
+        "Inspect generated install configuration for kernel, mirrors, boot intent and package selection without touching non-test disks.",
+        "Create a bounded harness with machine-readable success only after observed readiness; save actual boot lines and reject timeout/kernel panic."
+      ],
+      "accept": [
+        "Configurator is interactive and source/version provenance matches the artifact.",
+        "Live system reports aarch64 and the selected kernel is present in the offline repo.",
+        "Serial evidence distinguishes readiness from firmware-only boot."
+      ],
+      "source": "[Upstream plan: Verification: QEMU smoke](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [bin/omarchy-iso-boot](https://github.com/omacom/omarchy-iso/tree/7cfb7111a06873d61c45d37034577d4ba08d3f4f/bin/omarchy-iso-boot)",
+      "verify": "`bin/omarchy-iso-boot release/<exact-aarch64-artifact>.iso` → Configurator visible; in live shell `uname -m; pacman -Sy && pacman -Si linux-aarch64` → aarch64 and valid kernel metadata; `bash scripts/verify-live-arm.sh <serial-log>` → exit 0 only after the recorded readiness checks.",
+      "body_file": "docs/issues/24.md"
+    },
+    {
+      "number": 25,
+      "title": "[Epic] Validate native UTM install, updates, recovery and generic UEFI scope",
+      "milestone": 5,
+      "labels": [
+        "epic",
+        "testing"
+      ],
+      "deps": [
+        24
+      ],
+      "objective": "Demonstrate a working Omarchy 4 ARM desktop and its lifecycle, document tested limits and prepare upstream handoff.",
+      "files": "docs/utm.md; docs/known-issues.md; docs/evidence/validation/; upstream contribution links",
+      "steps": [
+        "Track all child receipts, source/artifact hashes and VM versions.",
+        "Keep prior-art claims separate from tests run on this project's image.",
+        "Update README readiness honestly; generic hardware remains a separate acceptance gate."
+      ],
+      "accept": [
+        "Clean UTM install/reboot, desktop, updates, recovery and guest integration verified.",
+        "Generic UEFI coverage or explicit scoped support decision documented; upstream handoff recorded."
+      ],
+      "source": "[Upstream plan: Verification; Open risks](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [README.md](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/README.md)",
+      "verify": "`gh issue list --repo thatcherstudio/omarchy-arm64 --state open --limit 100 --json number --jq '[.[] | select(.number == 26 or .number == 27 or .number == 28 or .number == 29 or .number == 30 or .number == 31)]'` → `[]`; every child is closed with its required evidence and the README dashboard is updated.",
+      "children": [
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "body_file": "docs/issues/25.md"
+    },
+    {
+      "number": 26,
+      "title": "[Task] Install and reboot into Omarchy 4 in native Apple Silicon UTM",
+      "milestone": 5,
+      "labels": [
+        "testing"
+      ],
+      "deps": [
+        18,
+        24
+      ],
+      "objective": "Prove the actual wanted path: native aarch64 UTM, not x86 emulation and not a prebuilt prior-art disk.",
+      "files": "docs/utm.md; scripts/verify-installed-arm.sh; docs/evidence/validation/utm-install.md; artifact/log/screenshot index",
+      "steps": [
+        "Document host model/macOS/UTM version, QEMU virtualization backend, CPU/RAM/disk/EFI/GPU settings and exact ISO hash.",
+        "Install to a fresh disposable disk via the Configurator, exercising encrypted Btrfs; capture all installer status and sanitized logs.",
+        "Detach ISO, reboot with fresh NVRAM as a fallback check, unlock and enter the Omarchy session.",
+        "Verify Hyprland + quickshell, menu, terminal, audio, DNS, default helper commands and required units. Check package ownership, matched runtime/settings, no dangling links and sane first-run completion.",
+        "Build a guest verification harness that emits a documented success line only after its checks; include failure cases. Do not reuse old BINS=445 counts as constants."
+      ],
+      "accept": [
+        "Native guest uname is aarch64; reboot succeeds from disk alone.",
+        "Hyprland/quickshell run with the actual Omarchy 4 configuration and core interactions work.",
+        "Evidence includes actual serial lines, screenshots, package list and exit statuses; no falsely successful summary on failed checks."
+      ],
+      "source": "[Upstream plan: Verification: install/reboot](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [README.md](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/README.md); [provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh)",
+      "verify": "In the user session: `uname -m; hyprctl version; pgrep -a quickshell; omarchy-version; systemctl --user --failed; pacman -Dk` → aarch64, working compositor/shell, version 4.x, no failed required units/dependency errors; `bash scripts/verify-installed-arm.sh` → exit 0 and `OMARCHY_ARM64_DESKTOP_OK` only after checks pass.",
+      "body_file": "docs/issues/26.md"
+    },
+    {
+      "number": 27,
+      "title": "[Task] Verify updates, kernel reboot detection and snapshot recovery on ARM",
+      "milestone": 5,
+      "labels": [
+        "testing",
+        "packages"
+      ],
+      "deps": [
+        26
+      ],
+      "objective": "Prove the installed system remains usable across full updates; exercise the ALARM /boot/Image trap rather than merely checking the source patch.",
+      "files": "docs/runbooks/arm-update-recovery.md; tests/update-kernel-cases.sh; docs/evidence/validation/update-cycle.md",
+      "steps": [
+        "On a disposable snapshot of #26 run omarchy-update with current packages: no perpetual kernel-reboot prompt.",
+        "Stage a real signed kernel update from a controlled qualified snapshot, run update, confirm reboot is requested, then reboot and confirm prompt clears.",
+        "Validate required non-kernel restart flags/services still work, mirrors/keyring stay correct and runtime/settings remain paired.",
+        "Create/restore a Snapper snapshot and verify boot after recovery; record expected package transitions and no skipped required migrations.",
+        "Show no dangling /usr/bin helpers or missing user units after update and subsequent login."
+      ],
+      "accept": [
+        "Current → upgraded-not-rebooted → rebooted cases have correct prompt outcomes.",
+        "Full update does not revert to x86 base mirrors or overwrite ARM integration.",
+        "Recovery returns to a bootable desktop with logs and package provenance."
+      ],
+      "source": "[bin/omarchy-update-restart](https://github.com/omacom/omarchy/tree/d174d4aa279ea7393d4fad4a80fed147866106b9/bin/omarchy-update-restart); [provision/src/stage3.sh](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/stage3.sh); [Upstream plan: Open risks 2](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "`bash tests/update-kernel-cases.sh` → exit 0; in the VM run `omarchy-update`, reboot, then `omarchy-update` → successful update and no false kernel prompt once current; `sudo snapper -c root list` plus the documented restore/reboot procedure → recovery demonstrated. Attach actual before/after uname and package versions.",
+      "body_file": "docs/issues/27.md"
+    },
+    {
+      "number": 28,
+      "title": "[Task] Validate UTM clipboard, display changes and graphics fallback",
+      "milestone": 5,
+      "labels": [
+        "testing"
+      ],
+      "deps": [
+        26
+      ],
+      "objective": "Verify the VM integration copied from prior art on this project's final installed image, including behavior without optional host services.",
+      "files": "docs/evidence/validation/utm-integration.md; docs/utm.md",
+      "steps": [
+        "With UTM window open, copy unique text tokens host→guest and guest→host; verify equality rather than only process existence.",
+        "Verify one session agent, daemon options and clean behavior when the SPICE channel or folder is absent.",
+        "Test runtime resolution change without losing menu/keybindings; record actual monitor modes.",
+        "Test software renderer baseline and supported acceleration on the recorded UTM version; keep explicit fallback. Validate selected shared-folder mode if offered."
+      ],
+      "accept": [
+        "Bidirectional clipboard tokens match; no competing agents or restart loop.",
+        "Resolution changes preserve usable session.",
+        "Renderer/UTM version matrix replaces stale blanket no-GPU or fixed-resolution claims."
+      ],
+      "source": "[provision/src/omarchy-arm-vdagent](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/omarchy-arm-vdagent); [provision/src/omarchy-arm-display](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/omarchy-arm-display); [provision/src/omarchy-arm-gpu](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/provision/src/omarchy-arm-gpu)",
+      "verify": "In the guest session `wl-paste` → exact host token; `printf 'arm64-guest-<unique-token>' | wl-copy` → same text on host pasteboard; `hyprctl monitors all; glxinfo -B` → recorded mode/renderer before and after controls. Attach no-SPICE boot and session-unit results.",
+      "body_file": "docs/issues/28.md"
+    },
+    {
+      "number": 29,
+      "title": "[Task] Qualify one additional generic UEFI ARM target and document limits",
+      "milestone": 5,
+      "labels": [
+        "testing",
+        "bootloader"
+      ],
+      "deps": [
+        27
+      ],
+      "objective": "Separate UTM success from the generic UEFI ARM claim. Target one available physical UEFI/ACPI ARM system or a documented additional virtual platform.",
+      "files": "docs/evidence/validation/generic-uefi.md; docs/hardware-support.md",
+      "steps": [
+        "Choose an available target and record firmware, boot media, ACPI/device support and exact artifact hash; do not assume a cloud VM can boot an optical ISO.",
+        "Test the same install, encrypted boot, networking, kernel update and recovery contract.",
+        "Record device-specific failures and scope supported hardware to evidence. Bare-metal Apple Silicon and SBC/U-Boot stay out of scope.",
+        "If no additional target is available, leave hardware qualification open. A UTM-only release decision requires an explicit documented scope change, not a fabricated PASS."
+      ],
+      "accept": [
+        "At least one additional target has an honest result with reproducible procedure.",
+        "A passed target has installed boot/update evidence; unsupported devices are named.",
+        "No broad generic-hardware certification based only on QEMU/UTM."
+      ],
+      "source": "[Upstream plan: Verification: real hardware; Open risks](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md)",
+      "verify": "On the additional target `uname -m; test -d /sys/firmware/efi; findmnt -no FSTYPE /; pacman -Dk` → aarch64, UEFI, intended filesystem and consistent packages; repeat #27 update/recovery commands successfully. If hardware is unavailable, record BLOCKED and keep this issue open.",
+      "body_file": "docs/issues/29.md"
+    },
+    {
+      "number": 30,
+      "title": "[Task] Publish tested known issues and operator installation/recovery docs",
+      "milestone": 5,
+      "labels": [
+        "docs",
+        "testing"
+      ],
+      "deps": [
+        27,
+        28,
+        29
+      ],
+      "objective": "Ship accurate user-facing documentation tied to tested versions and package decisions.",
+      "files": "docs/known-issues.md; docs/utm.md; docs/hardware-support.md; docs/building.md; README.md",
+      "steps": [
+        "Document exact build/install instructions, resource requirements, repo key bootstrap, upgrade and recovery.",
+        "List optional unavailable tools, opencode decision and OBS browser-source limitation with tested versions and alternatives.",
+        "Correct brief deltas: herdr is buildable with Zig 0.15.2; UTM GPU and resizing limitations depend on version/settings.",
+        "Separate supported, degraded, untested and blocked; link each claim to this project's evidence or clearly attributed prior art.",
+        "Publish final milestone/dashboard status and artifact checksums; ensure clean-clone instructions use git-tracked changes only."
+      ],
+      "accept": [
+        "No stale claims that herdr universally fails, ARM packages universally do not exist, or display mode can never change.",
+        "All advertised supported paths have evidence; known exclusions are visible before installation.",
+        "A reviewer can follow documented commands without unpublished patches."
+      ],
+      "source": "[README.md](https://github.com/ggalancs/omarchy-arm-utm/tree/bf5ca3e9d2631220e5093d84728dc415685872ae/README.md); [README.md](https://github.com/omarchy-mac/omarchy-pkgs-aarch64/tree/c18489bcad76dfa83884da41e8bdbb91bcad536d/README.md); [project research](https://github.com/thatcherstudio/omarchy-arm64/blob/main/docs/research.md)",
+      "verify": "`git diff --check` → exit 0; execute the documented clean-clone build/install procedure on a disposable target and record its command transcript; all support-table evidence links resolve to the tested artifact/version.",
+      "body_file": "docs/issues/30.md"
+    },
+    {
+      "number": 31,
+      "title": "[Task] Submit the verified dual-arch changes upstream and link the project in discussion 7960",
+      "milestone": 5,
+      "labels": [
+        "docs",
+        "infra"
+      ],
+      "deps": [
+        22,
+        27,
+        30
+      ],
+      "objective": "Offer a focused upstream contribution after implementation evidence exists. This issue authorizes the future implementer to submit the PR and discussion comment; the PM bootstrap does not claim that work is done.",
+      "files": "docs/upstream-contribution.md; upstream omacom/omarchy-iso PR; linked desktop/package PRs; discussion #7960",
+      "steps": [
+        "Rebase the minimal shared-profile changes onto the then-current quattro branch and re-run required x86/ARM checks.",
+        "Open an upstream PR referencing plans/aarch64-support.md, source/package decisions, all prerequisite receipts and tested support scope.",
+        "Link companion desktop/package changes and their release requirements so upstream can reproduce the result.",
+        "Post a concise comment on discussion #7960 linking this repo, PR, artifacts and limitations; record the exact URLs here.",
+        "Avoid reintroducing changes already landed upstream; update the plan-to-PR mapping."
+      ],
+      "accept": [
+        "Upstream PR is open with a concrete reviewed diff and successful x86/ARM evidence.",
+        "Discussion comment exists and accurately states supported/tested scope.",
+        "Remaining companion prerequisites are explicitly linked; upstream merge is not required to close submission."
+      ],
+      "source": "[Upstream plan: Approach; Verification](https://github.com/omacom/omarchy-iso/blob/7cfb7111a06873d61c45d37034577d4ba08d3f4f/plans/aarch64-support.md); [discussion #7960](https://github.com/omacom/omarchy/discussions/7960)",
+      "verify": "`gh pr view <upstream-pr-url> --json url,state,body` → OPEN or MERGED with evidence links; open the recorded discussion-comment URL → project link and truthful status visible; commit both URLs in docs/upstream-contribution.md.",
+      "body_file": "docs/issues/31.md"
+    }
+  ]
+}
